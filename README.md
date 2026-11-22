@@ -123,7 +123,51 @@ supportboard-php/
 - MySQL 5.7 or higher
 - Node.js 16+ (for frontend)
 
-### Backend Setup
+### Quick Install (Recommended)
+
+The project includes **four installation options** — pick whichever suits your workflow:
+
+#### Option 1: Web Installer (Easiest)
+
+Browse to `http://localhost/installer` after cloning. The wizard will:
+1. Check system requirements (PHP, MySQL, Composer, Laravel)
+2. Configure your database connection
+3. Test the MySQL connection
+4. Run migrations, seed demo data, and configure vLLM
+5. Show a completion report with login credentials
+
+#### Option 2: Bash Installer (Terminal)
+
+```bash
+# Interactive mode
+bash install.sh
+
+# Non-interactive (all defaults)
+bash install.sh --force
+
+# Skip database seeding
+bash install.sh --skip-seed
+```
+
+#### Option 3: Artisan Command (Laravel CLI)
+
+```bash
+# Interactive CLI wizard
+php artisan supportboard:install
+
+# With all options
+php artisan supportboard:install \
+    --db-host=127.0.0.1 \
+    --db-port=3306 \
+    --db-name=supportboard \
+    --db-user=root \
+    --db-password=secret \
+    --llm-endpoint=http://localhost:8000/v1 \
+    --llm-model=gpt-3.5-turbo \
+    --force
+```
+
+#### Option 4: Manual Setup (Full Control)
 
 ```bash
 # Navigate to the project
@@ -135,9 +179,6 @@ composer install
 # Copy environment file
 cp .env.example .env
 
-# Generate application key
-php artisan key:generate
-
 # Update .env with your MySQL credentials:
 # DB_CONNECTION=mysql
 # DB_HOST=127.0.0.1
@@ -145,6 +186,9 @@ php artisan key:generate
 # DB_DATABASE=supportboard
 # DB_USERNAME=root
 # DB_PASSWORD=your_password
+
+# Generate application key
+php artisan key:generate
 
 # Create the database
 mysql -u root -p -e "CREATE DATABASE supportboard CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"

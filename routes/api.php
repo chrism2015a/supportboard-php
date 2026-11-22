@@ -14,6 +14,13 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CrawlSourceController;
+use App\Http\Controllers\InstallerController;
+
+// Installer (public, runs once)
+Route::get('/installer', [InstallerController::class, 'index']);
+Route::get('/installer/check', [InstallerController::class, 'check']);
+Route::post('/installer/test-db', [InstallerController::class, 'testDb']);
+Route::post('/installer/run', [InstallerController::class, 'run']);
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
