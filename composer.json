@@ -10,7 +10,6 @@
         "tymon/jwt-auth": "^2.1",
         "predis/predis": "^2.2",
         "guzzlehttp/guzzle": "^7.8",
-        "barryvdh/laravel-cors": "^3.0",
         "laravel/sail": "^1.29"
     },
     "require-dev": {
