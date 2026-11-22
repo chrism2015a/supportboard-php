@@ -1,7 +1,8 @@
 FROM php:8.2-fpm
 
-# Install all required system dependencies in one layer
+# Install ALL required system dependencies (including libxml for soap, libpng for gd)
 RUN apt-get update && apt-get install -y \
+    libxml2-dev \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
@@ -12,11 +13,16 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql mbstring zip bcmath soap xml opcache \
+    && docker-php-ext-install \
+        pdo_mysql \
+        mbstring \
+        zip \
+        bcmath \
+        soap \
+        xml \
+        opcache \
+    && docker-php-ext-install gd \
     && rm -rf /var/lib/apt/lists/*
-
-# Install and enable redis for caching/queues (optional but recommended)
-# RUN pecl install redis && docker-php-ext-enable redis
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
