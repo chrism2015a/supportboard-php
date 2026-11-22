@@ -20,6 +20,8 @@ use App\Http\Controllers\AgentRatingController;
 use App\Http\Controllers\SmartNoteController;
 use App\Http\Controllers\OfflineMessageController;
 use App\Http\Controllers\RoutingRuleController;
+use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\FlowController;
 
 // Installer (public, runs once)
 Route::get('/installer', [InstallerController::class, 'index']);
@@ -153,6 +155,24 @@ Route::middleware('auth:api')->group(function () {
     // Ticket Queue (priority-sorted queue + auto-assign)
     Route::get('/tickets/queue', [TicketController::class, 'queue']);
     Route::post('/tickets/assign-queue', [TicketController::class, 'assignQueue']);
+
+    // File Uploads (rich messages)
+    Route::post('/attachments/upload', [FileUploadController::class, 'upload']);
+    Route::get('/attachments/{id}/download', [FileUploadController::class, 'download'])->name('attachments.download');
+    Route::get('/attachments/{id}/preview', [FileUploadController::class, 'preview']);
+    Route::get('/attachments/message/{messageId}', [FileUploadController::class, 'forMessage']);
+    Route::delete('/attachments/{id}', [FileUploadController::class, 'destroy']);
+
+    // AI Chatbot Flows (visual automation builder)
+    Route::get('/flows', [FlowController::class, 'index']);
+    Route::post('/flows', [FlowController::class, 'store']);
+    Route::get('/flows/{id}', [FlowController::class, 'show']);
+    Route::put('/flows/{id}', [FlowController::class, 'update']);
+    Route::delete('/flows/{id}', [FlowController::class, 'destroy']);
+    Route::put('/flows/{id}/toggle', [FlowController::class, 'activate']);
+    Route::post('/flows/execute', [FlowController::class, 'execute']);
+    Route::get('/flows/{id}/executions', [FlowController::class, 'executions']);
+    Route::get('/flows/{id}/analytics', [FlowController::class, 'analytics']);
 });
 
 // Crawl Sources
