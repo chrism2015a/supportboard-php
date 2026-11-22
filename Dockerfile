@@ -33,10 +33,12 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Create necessary directories and set permissions
-RUN mkdir -p storage/bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 755 storage bootstrap/cache
+# Create all runtime directories before chown (these are gitignored runtime dirs)
+RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
+    && mkdir -p storage/logs \
+    && mkdir -p bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap \
+    && chmod -R 755 storage bootstrap
 
 # Install PHP dependencies (optimized for production)
 RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress
