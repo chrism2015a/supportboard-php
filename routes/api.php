@@ -15,6 +15,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CrawlSourceController;
 use App\Http\Controllers\InstallerController;
+use App\Http\Controllers\SavedReplyController;
 
 // Installer (public, runs once)
 Route::get('/installer', [InstallerController::class, 'index']);
@@ -80,6 +81,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/chatbots/qnas', [ChatbotController::class, 'listQnAs']);
     Route::post('/chatbots/qnas', [ChatbotController::class, 'storeQnA']);
     Route::post('/chatbots/chat', [ChatbotController::class, 'chat']);
+    Route::post('/chatbots/smart-reply', [ChatbotController::class, 'smartReply']);
+    Route::post('/chatbots/rewrite-message', [ChatbotController::class, 'rewriteMessage']);
+    Route::post('/chatbots/translate-message', [ChatbotController::class, 'translateMessage']);
+    Route::post('/chatbots/config/llm', [ChatbotController::class, 'getLLMConfig']);
+    Route::post('/chatbots/config/llm/update', [ChatbotController::class, 'updateLLMConfig']);
+    Route::get('/chatbots/analytics', [ChatbotController::class, 'analytics']);
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -99,6 +106,15 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::put('/users/{id}', [UserController::class, 'update']);
     Route::put('/users/{id}/password', [UserController::class, 'updatePassword']);
+
+    // Saved Replies (AI-powered canned responses)
+    Route::get('/saved-replies', [SavedReplyController::class, 'index']);
+    Route::post('/saved-replies', [SavedReplyController::class, 'store']);
+    Route::get('/saved-replies/{id}', [SavedReplyController::class, 'show']);
+    Route::put('/saved-replies/{id}', [SavedReplyController::class, 'update']);
+    Route::delete('/saved-replies/{id}', [SavedReplyController::class, 'destroy']);
+    Route::post('/saved-replies/generate', [SavedReplyController::class, 'generate']);
+    Route::get('/saved-replies/{id}/use', [SavedReplyController::class, 'use']);
 });
 
 // Crawl Sources

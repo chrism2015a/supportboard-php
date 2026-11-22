@@ -5,21 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\ChatbotConfig;
 use App\Models\ChatbotQnA;
 use App\Models\ChatbotConversation;
+use App\Models\Conversation;
 use App\Models\Article;
 use App\Models\WebCrawl;
 use App\Services\LLMService;
 use App\Services\WebCrawler;
+use App\Services\AIService;
 use Illuminate\Http\Request;
 
 class ChatbotController extends Controller
 {
     protected LLMService $llmService;
     protected WebCrawler $webCrawler;
+    protected AIService $aiService;
 
-    public function __construct(LLMService $llmService, WebCrawler $webCrawler)
+    public function __construct(LLMService $llmService, WebCrawler $webCrawler, AIService $aiService)
     {
         $this->llmService = $llmService;
         $this->webCrawler = $webCrawler;
+        $this->aiService = $aiService;
     }
 
     public function index()
@@ -242,6 +246,76 @@ class ChatbotController extends Controller
             'llm_responses' => $llm,
             'qa_percentage' => $total > 0 ? round(($qa / $total) * 100, 2) : 0,
             'llm_percentage' => $total > 0 ? round(($llm / $total) * 100, 2) : 0,
+        ]);
+    }
+
+    /**
+     * AI Smart Reply - suggest 3 reply options based on conversation context.
+     */
+    public function smartReply(Request $request)
+    {
+        $validated = $request->validate([
+            'conversation_id' => 'required|integer',
+        ]);
+
+        $conversation = Conversation::with('messages.user')->findOrFail($validated['conversation_id']);
+
+        // Build conversation history (last 10 messages)
+        $messages = $conversation->messages()->with('user')->latest()->take(10)->get();
+        $historyText = '';
+        foreach ($messages as $msg) {
+            $role = $msg->user && $msg->user->role === 'user' ? 'Customer' : 'Agent';
+            $historyText .= "{$role}: {$msg->text}\n";
+        }
+
+        // Get the last customer message to suggest a reply for
+        $lastCustomerMessage = $messages->reverse()->firstWhere(function ($msg) {
+            return $msg->user && ($msg->user->role === 'user' || $msg->user->role === 'customer');
+        });
+
+        $customerMessage = $lastCustomerMessage ? $lastCustomerMessage->text : 'Hello, I need help.';
+
+        $suggestions = $this->aiService->smartReply($customerMessage, $historyText);
+
+        return response()->json(['suggestions' => $suggestions]);
+    }
+
+    /**
+     * AI Message Rewriting - rewrite a message in a specific tone.
+     */
+    public function rewriteMessage(Request $request)
+    {
+        $validated = $request->validate([
+            'message' => 'required|string',
+            'tone' => 'required|in:professional,friendly,concise,empathetic,firm',
+        ]);
+
+        $rewritten = $this->aiService->rewriteMessage($validated['message'], $validated['tone']);
+
+        return response()->json(['rewritten' => $rewritten]);
+    }
+
+    /**
+     * AI Translation - translate a message between languages.
+     */
+    public function translateMessage(Request $request)
+    {
+        $validated = $request->validate([
+            'message' => 'required|string',
+            'source_lang' => 'nullable|string|min:2',
+            'target_lang' => 'required|string|min:2',
+        ]);
+
+        $translated = $this->aiService->translateMessage(
+            $validated['message'],
+            $validated['source_lang'] ?? 'auto',
+            $validated['target_lang']
+        );
+
+        return response()->json([
+            'translated' => $translated,
+            'source_lang' => $validated['source_lang'] ?? 'auto',
+            'target_lang' => $validated['target_lang'],
         ]);
     }
 
