@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # PHP-FPM Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supportboard-app
+    restart: unless-stopped
+    volumes:
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=supportboard
+      - DB_USERNAME=supportboard
+      - DB_PASSWORD=secret_password
+      - JWT_SECRET=${JWT_SECRET:-}
+      - LLM_ENDPOINT=${LLM_ENDPOINT:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.7}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-1024}
+      - LLM_SYSTEM_PROMPT=${LLM_SYSTEM_PROMPT:-You are a helpful customer support assistant.}
+      - CRAWLER_USER_AGENT=${CRAWLER_USER_AGENT:-}
+      - CRAWLER_MAX_PAGES=${CRAWLER_MAX_PAGES:-50}
+      - CRAWLER_MAX_DEPTH=${CRAWLER_MAX_DEPTH:-3}
+      - CRAWLER_RESPECT_ROBOTS=${CRAWLER_RESPECT_ROBOTS:-true}
+      - CRAWLER_TIMEOUT=${CRAWLER_TIMEOUT:-30}
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY:-}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_MESSAGE_TEMPLATE_ID=${WHATSAPP_MESSAGE_TEMPLATE_ID:-}
+      - WHATSAPP_AUTO_REPLY=${WHATSAPP_AUTO_REPLY:-}
+      - WHATSAPP_WEBHOOK_VERIFY_TOKEN=${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-supportboard_verify_token}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-supportboard_verify_token}
+      - WHATSAPP_DEFAULT_DEPARTMENT_ID=${WHATSAPP_DEFAULT_DEPARTMENT_ID:-1}
+
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: supportboard-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: supportboard
+      MYSQL_USER: supportboard
+      MYSQL_PASSWORD: secret_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=caching_sha2_password
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: supportboard-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - app
+
+  # Queue Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supportboard-worker
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=supportboard
+      - DB_USERNAME=supportboard
+      - DB_PASSWORD=secret_password
+      - JWT_SECRET=${JWT_SECRET:-}
+      - LLM_ENDPOINT=${LLM_ENDPOINT:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.7}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-1024}
+      - LLM_SYSTEM_PROMPT=${LLM_SYSTEM_PROMPT:-You are a helpful customer support assistant.}
+      - CRAWLER_USER_AGENT=${CRAWLER_USER_AGENT:-}
+      - CRAWLER_MAX_PAGES=${CRAWLER_MAX_PAGES:-50}
+      - CRAWLER_MAX_DEPTH=${CRAWLER_MAX_DEPTH:-3}
+      - CRAWLER_RESPECT_ROBOTS=${CRAWLER_RESPECT_ROBOTS:-true}
+      - CRAWLER_TIMEOUT=${CRAWLER_TIMEOUT:-30}
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY:-}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_MESSAGE_TEMPLATE_ID=${WHATSAPP_MESSAGE_TEMPLATE_ID:-}
+      - WHATSAPP_AUTO_REPLY=${WHATSAPP_AUTO_REPLY:-}
+      - WHATSAPP_WEBHOOK_VERIFY_TOKEN=${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-supportboard_verify_token}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-supportboard_verify_token}
+      - WHATSAPP_DEFAULT_DEPARTMENT_ID=${WHATSAPP_DEFAULT_DEPARTMENT_ID:-1}
+    depends_on:
+      - db
+
+volumes:
+  mysql_data:
+    driver: local

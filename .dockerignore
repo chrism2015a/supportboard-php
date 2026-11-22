@@ -1,0 +1,42 @@
+# Version control
+.git
+.gitignore
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vendor/
+node_modules/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+storage/logs/*.log
+
+# Cache
+bootstrap/cache/*
+!.env
+
+# Docker files (not needed inside container)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Test files
+tests/
+
+# Documentation
+docs/
+*.md
