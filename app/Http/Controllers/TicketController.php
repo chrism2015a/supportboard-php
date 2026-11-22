@@ -111,4 +111,57 @@ class TicketController extends Controller
 
         return response()->json($ticket->messages()->with('user')->orderBy('created_at', 'asc')->get());
     }
+
+    /**
+     * Get ticket queue sorted by priority and age.
+     */
+    public function queue(Request $request)
+    {
+        $openTickets = Ticket::where('status', 'open')
+            ->with(['user', 'agent', 'department'])
+            ->get();
+
+        $urgent = $openTickets->where('priority', 'urgent');
+        $high = $openTickets->where('priority', 'high');
+        $medium = $openTickets->where('priority', 'normal');
+        $low = $openTickets->where('priority', 'low');
+
+        return response()->json([
+            'summary' => [
+                'urgent' => $urgent->count(),
+                'high' => $high->count(),
+                'medium' => $medium->count(),
+                'low' => $low->count(),
+                'total' => $openTickets->count(),
+            ],
+            'tickets' => $openTickets
+                ->sortBy(function ($t) {
+                    $priorityOrder = ['urgent' => 0, 'high' => 1, 'normal' => 2, 'low' => 3];
+                    return ($priorityOrder[$t->priority] ?? 3) . $t->created_at->timestamp;
+                })
+                ->values()
+                ->take(50),
+        ]);
+    }
+
+    /**
+     * Auto-assign a ticket based on routing rules.
+     */
+    public function assignQueue(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_id' => 'required|integer|exists:tickets,id',
+        ]);
+
+        $ticket = Ticket::findOrFail($validated['ticket_id']);
+
+        $result = \App\Models\RoutingRule::assignTicket($ticket);
+
+        return response()->json([
+            'assigned' => $result['assigned'],
+            'ticket' => $ticket,
+            'rule' => $result['rule'] ?? null,
+            'agent_id' => $result['agent_id'],
+        ]);
+    }
 }

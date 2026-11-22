@@ -17,6 +17,7 @@ class Conversation extends Model
         'status',
         'source',
         'subject',
+        'quick_buttons',
         'tags',
         'custom_data',
         'started_at',

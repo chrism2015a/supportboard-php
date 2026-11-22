@@ -16,6 +16,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\CrawlSourceController;
 use App\Http\Controllers\InstallerController;
 use App\Http\Controllers\SavedReplyController;
+use App\Http\Controllers\AgentRatingController;
+use App\Http\Controllers\SmartNoteController;
+use App\Http\Controllers\OfflineMessageController;
+use App\Http\Controllers\RoutingRuleController;
 
 // Installer (public, runs once)
 Route::get('/installer', [InstallerController::class, 'index']);
@@ -115,6 +119,40 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/saved-replies/{id}', [SavedReplyController::class, 'destroy']);
     Route::post('/saved-replies/generate', [SavedReplyController::class, 'generate']);
     Route::get('/saved-replies/{id}/use', [SavedReplyController::class, 'use']);
+
+    // Agent Ratings
+    Route::get('/agent-ratings', [AgentRatingController::class, 'index']);
+    Route::post('/agent-ratings', [AgentRatingController::class, 'store']);
+    Route::delete('/agent-ratings/{id}', [AgentRatingController::class, 'destroy']);
+    Route::get('/agent-ratings/average', [AgentRatingController::class, 'avgRating']);
+
+    // Smart Notes (AI-generated conversation summaries)
+    Route::get('/smart-notes', [SmartNoteController::class, 'index']);
+    Route::post('/smart-notes', [SmartNoteController::class, 'store']);
+    Route::get('/smart-notes/{id}', [SmartNoteController::class, 'show']);
+    Route::delete('/smart-notes/{id}', [SmartNoteController::class, 'destroy']);
+    Route::post('/smart-notes/generate', [SmartNoteController::class, 'generate']);
+
+    // Offline Messages (email capture when agents are offline)
+    Route::get('/offline-messages', [OfflineMessageController::class, 'index']);
+    Route::post('/offline-messages', [OfflineMessageController::class, 'store']);
+    Route::get('/offline-messages/{id}', [OfflineMessageController::class, 'show']);
+    Route::put('/offline-messages/{id}', [OfflineMessageController::class, 'update']);
+    Route::delete('/offline-messages/{id}', [OfflineMessageController::class, 'destroy']);
+    Route::post('/offline-messages/{id}/notify', [OfflineMessageController::class, 'sendEmailNotification']);
+
+    // Routing Rules (auto-assign tickets based on conditions)
+    Route::get('/routing-rules', [RoutingRuleController::class, 'index']);
+    Route::post('/routing-rules', [RoutingRuleController::class, 'store']);
+    Route::get('/routing-rules/{id}', [RoutingRuleController::class, 'show']);
+    Route::put('/routing-rules/{id}', [RoutingRuleController::class, 'update']);
+    Route::delete('/routing-rules/{id}', [RoutingRuleController::class, 'destroy']);
+    Route::put('/routing-rules/{id}/toggle', [RoutingRuleController::class, 'activate']);
+    Route::post('/routing-rules/test-match', [RoutingRuleController::class, 'testMatch']);
+
+    // Ticket Queue (priority-sorted queue + auto-assign)
+    Route::get('/tickets/queue', [TicketController::class, 'queue']);
+    Route::post('/tickets/assign-queue', [TicketController::class, 'assignQueue']);
 });
 
 // Crawl Sources
