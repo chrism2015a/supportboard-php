@@ -27,7 +27,6 @@ storage/logs/*.log
 
 # Cache
 bootstrap/cache/*
-!.env
 
 # Docker files (not needed inside container)
 Dockerfile

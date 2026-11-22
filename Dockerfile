@@ -33,15 +33,13 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Set permissions before installing dependencies
-RUN chown -R www-data:www-data storage bootstrap/cache
+# Create necessary directories and set permissions
+RUN mkdir -p storage/bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 755 storage bootstrap/cache
 
 # Install PHP dependencies (optimized for production)
 RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress
-
-# Set file permissions
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 755 storage bootstrap/cache
 
 # Expose port
 EXPOSE 9000
