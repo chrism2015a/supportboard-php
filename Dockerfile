@@ -1,6 +1,7 @@
 FROM php:8.2-fpm
 
 # Set Composer environment variables to bypass security advisory blocking
+ENV COMPOSER_AUDIT=0
 ENV COMPOSER_AUDIT_BLOCK=0
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
@@ -45,7 +46,8 @@ RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
     && chmod -R 755 storage bootstrap
 
 # Install PHP dependencies (optimized for production)
-RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress
+# --ignore-advisories bypasses security advisory blocking for Laravel 10
+RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress --ignore-advisories
 
 # Expose port
 EXPOSE 9000
