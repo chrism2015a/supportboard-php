@@ -46,8 +46,8 @@ RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
     && chmod -R 755 storage bootstrap
 
 # Install PHP dependencies (optimized for production)
-# --ignore-advisories bypasses security advisory blocking for Laravel 10
-RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress --ignore-advisories
+# --no-security-blocking bypasses security advisory blocking for Laravel 10
+RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress --no-security-blocking
 
 # Expose port
 EXPOSE 9000
