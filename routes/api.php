@@ -22,12 +22,16 @@ use App\Http\Controllers\OfflineMessageController;
 use App\Http\Controllers\RoutingRuleController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\FlowController;
+use App\Http\Controllers\WhatsAppController;
 
 // Installer (public, runs once)
-Route::get('/installer', [InstallerController::class, 'index']);
+Route::get('/installer', [InstallerController::class, 'index'])->name('installer.index');
 Route::get('/installer/check', [InstallerController::class, 'check']);
 Route::post('/installer/test-db', [InstallerController::class, 'testDb']);
 Route::post('/installer/run', [InstallerController::class, 'run']);
+
+// Public WhatsApp webhook (no auth needed)
+Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -173,6 +177,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/flows/execute', [FlowController::class, 'execute']);
     Route::get('/flows/{id}/executions', [FlowController::class, 'executions']);
     Route::get('/flows/{id}/analytics', [FlowController::class, 'analytics']);
+
+    // WhatsApp Support
+    Route::get('/whatsapp/status', [WhatsAppController::class, 'status']);
+    Route::post('/whatsapp/test', [WhatsAppController::class, 'test']);
+    Route::post('/whatsapp/send', [WhatsAppController::class, 'send']);
 });
 
 // Crawl Sources

@@ -260,14 +260,16 @@
                 </div>
                 <div class="step-content" id="step2">
                     <h2>Install & Configure</h2>
-                    <p class="subtitle">We'll run migrations, seed data, and configure vLLM.</p>
+                    <p class="subtitle">Run migrations, seed data, and configure integrations.</p>
                     <div class="info-box">
                         This step will:<br>
                         • Generate application keys<br>
                         • Run all database migrations<br>
                         • Seed demo data (admin, agent, user accounts)<br>
-                        • Configure vLLM for the chatbot AI
+                        • Configure vLLM for the chatbot AI<br>
+                        • (Optional) Set up WhatsApp support for live chats
                     </div>
+                    <h3 style="font-size:16px; margin: 16px 0 12px;">🤖 AI / LLM Configuration</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label>LLM Endpoint</label>
@@ -297,6 +299,43 @@
                         <label>System Prompt</label>
                         <textarea id="llmPrompt" rows="3">You are a helpful customer support assistant. Provide concise, accurate, and friendly responses. If you don't know something, suggest contacting a human agent.</textarea>
                     </div>
+
+                    <h3 style="font-size:16px; margin: 24px 0 12px;">📱 WhatsApp Support <span style="font-weight:normal; color:#6c757d; font-size:13px;">(optional)</span></h3>
+                    <div class="info-box" style="background:#f0fdf4; border-left-color:#22c55e; color:#166534;">
+                        <strong>WhatsApp Business API</strong> allows customers to reach your support team via WhatsApp.
+                        Get your API key from <a href="https://developers.facebook.com" target="_blank">Facebook Developers</a>.
+                        Leave blank to skip WhatsApp setup.
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp API Key</label>
+                        <input type="password" id="whatsappApiKey" placeholder="EAA placed here... or leave blank to skip">
+                        <div class="hint">Facebook access token with WhatsApp permissions</div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone Number ID</label>
+                            <input type="text" id="whatsappPhoneId" placeholder="e.g., 103847562891234">
+                            <div class="hint">Your WhatsApp Business phone number ID from Facebook</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Message Template ID</label>
+                            <input type="text" id="whatsappTemplateId" placeholder="e.g., hello_world_123456789">
+                            <div class="hint">Pre-approved template for outbound messages</div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Auto-Reply Message</label>
+                            <input type="text" id="whatsappAutoReply" placeholder="Thanks for contacting us! An agent will reply soon.">
+                            <div class="hint">Sent automatically when a customer messages</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Webhook Verify Token</label>
+                            <input type="text" id="whatsappVerifyToken" value="supportboard_verify_token">
+                            <div class="hint">Custom token to verify webhook requests from Facebook</div>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-top:20px;">
                         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                             <input type="checkbox" id="seedData" checked>
@@ -400,11 +439,24 @@ function testDatabase() {
 }
 
 function runInstallation() {
-    const data = { llm_endpoint: document.getElementById('llmEndpoint').value, llm_model: document.getElementById('llmModel').value, llm_api_key: document.getElementById('llmApiKey').value, llm_temperature: document.getElementById('llmTemp').value, llm_max_tokens: document.getElementById('llmMaxTokens').value, llm_system_prompt: document.getElementById('llmPrompt').value, seed: document.getElementById('seedData').checked };
+    const data = {
+        llm_endpoint: document.getElementById('llmEndpoint').value,
+        llm_model: document.getElementById('llmModel').value,
+        llm_api_key: document.getElementById('llmApiKey').value,
+        llm_temperature: document.getElementById('llmTemp').value,
+        llm_max_tokens: document.getElementById('llmMaxTokens').value,
+        llm_system_prompt: document.getElementById('llmPrompt').value,
+        seed: document.getElementById('seedData').checked,
+        whatsapp_api_key: document.getElementById('whatsappApiKey').value,
+        whatsapp_phone_number_id: document.getElementById('whatsappPhoneId').value,
+        whatsapp_message_template_id: document.getElementById('whatsappTemplateId').value,
+        whatsapp_auto_reply: document.getElementById('whatsappAutoReply').value,
+        whatsapp_verify_token: document.getElementById('whatsappVerifyToken').value
+    };
     const alert = document.getElementById('installProgress'); alert.style.display = 'block';
     const status = document.getElementById('installStatus'); const fill = document.getElementById('progressFill');
     const btn = document.getElementById('btnNext'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Installing...';
-    const steps = [{name:'Generating keys...',p:10},{name:'Running migrations...',p:30},{name:'Seeding data...',p:60},{name:'Configuring vLLM...',p:80},{name:'Finalizing...',p:100}];
+    const steps = [{name:'Generating keys...',p:10},{name:'Running migrations...',p:30},{name:'Seeding data...',p:50},{name:'Configuring AI...',p:70},{name:'Configuring WhatsApp...',p:85},{name:'Finalizing...',p:100}];
     let si = 0; const iv = setInterval(() => { if (si < steps.length) { status.textContent = steps[si].name; fill.style.width = steps[si].p+'%'; si++; } }, 1500);
     fetch('/installer/run', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) }).then(r => r.json()).then(result => {
         clearInterval(iv); fill.style.width = '100%'; status.textContent = 'Complete!';
@@ -414,9 +466,9 @@ function runInstallation() {
 
 function showResults(result) {
     const list = document.getElementById('resultList'); list.innerHTML = '';
-    [{label:'Database migrations',s:result.migrations},{label:'Demo data seeding',s:result.seed},{label:'vLLM configuration',s:result.llm},{label:'Application keys',s:result.keys},{label:'Crawler config',s:result.crawler}].forEach(item => {
+    [{label:'Database migrations',s:result.migrations},{label:'Demo data seeding',s:result.seed},{label:'vLLM configuration',s:result.llm},{label:'Application keys',s:result.keys},{label:'Crawler config',s:result.crawler},{label:'WhatsApp setup',s:result.whatsapp}].forEach(item => {
         const li = document.createElement('li');
-        const st = document.createElement('span'); st.className = 'status ' + (item.s ? 'success' : 'error'); st.innerHTML = item.s ? '✓' : '✗';
+        const st = document.createElement('span'); st.className = 'status ' + (item.s !== false ? 'success' : 'error'); st.innerHTML = item.s !== false ? '✓' : (item.s === false ? '✗' : '?');
         li.appendChild(st); li.appendChild(document.createTextNode(' ' + item.label)); list.appendChild(li);
     });
     document.getElementById('finalTitle').textContent = result.success ? '✅ Installation Complete!' : '⚠️ Partial Installation';

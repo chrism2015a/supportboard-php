@@ -115,6 +115,13 @@ class InstallerController extends Controller
             'llm_max_tokens' => 'nullable|integer|min:1',
             'llm_system_prompt' => 'nullable|string',
             'seed' => 'nullable|boolean',
+            'whatsapp_api_key' => 'nullable|string',
+            'whatsapp_phone_number_id' => 'nullable|string',
+            'whatsapp_message_template_id' => 'nullable|string',
+            'whatsapp_auto_reply' => 'nullable|string',
+            'whatsapp_default_department_id' => 'nullable|integer',
+            'whatsapp_webhook_verify_token' => 'nullable|string',
+            'whatsapp_verify_token' => 'nullable|string',
         ]);
 
         $results = [
@@ -124,6 +131,7 @@ class InstallerController extends Controller
             'seed' => true,
             'llm' => false,
             'crawler' => false,
+            'whatsapp' => false,
             'message' => '',
         ];
 
@@ -172,6 +180,18 @@ class InstallerController extends Controller
         $this->updateEnv('CRAWLER_MAX_DEPTH', $request->crawler_max_depth ?? 3);
         $this->updateEnv('CRAWLER_RESPECT_ROBOTS', $request->crawler_respect_robots ?? true);
         $results['crawler'] = true;
+
+        // Step 6: Configure WhatsApp
+        if ($request->whatsapp_api_key) {
+            $this->updateEnv('WHATSAPP_API_KEY', $request->whatsapp_api_key);
+            $this->updateEnv('WHATSAPP_PHONE_NUMBER_ID', $request->whatsapp_phone_number_id ?? '');
+            $this->updateEnv('WHATSAPP_MESSAGE_TEMPLATE_ID', $request->whatsapp_message_template_id ?? '');
+            $this->updateEnv('WHATSAPP_AUTO_REPLY', $request->whatsapp_auto_reply ?? '');
+            $this->updateEnv('WHATSAPP_WEBHOOK_VERIFY_TOKEN', $request->whatsapp_webhook_verify_token ?? 'supportboard_verify_token');
+            $this->updateEnv('WHATSAPP_VERIFY_TOKEN', $request->whatsapp_verify_token ?? 'supportboard_verify_token');
+            $this->updateEnv('WHATSAPP_DEFAULT_DEPARTMENT_ID', $request->whatsapp_default_department_id ?? 1);
+            $results['whatsapp'] = true;
+        }
 
         // Check if all critical steps passed
         $results['success'] = $results['migrations'] && $results['keys'];
