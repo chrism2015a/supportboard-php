@@ -6,30 +6,28 @@ use App\Models\ChatbotConfig;
 use App\Models\ChatbotQnA;
 use App\Models\ChatbotConversation;
 use App\Models\Article;
+use App\Models\WebCrawl;
 use App\Services\LLMService;
+use App\Services\WebCrawler;
 use Illuminate\Http\Request;
 
 class ChatbotController extends Controller
 {
     protected LLMService $llmService;
+    protected WebCrawler $webCrawler;
 
-    public function __construct(LLMService $llmService)
+    public function __construct(LLMService $llmService, WebCrawler $webCrawler)
     {
         $this->llmService = $llmService;
+        $this->webCrawler = $webCrawler;
     }
 
-    /**
-     * List all chatbot configurations.
-     */
     public function index()
     {
         $configs = ChatbotConfig::withCount(['qnas', 'flows'])->get();
         return response()->json($configs);
     }
 
-    /**
-     * Create a new chatbot configuration.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -44,31 +42,22 @@ class ChatbotController extends Controller
             'llm_max_tokens' => 'nullable|integer|min:1',
             'llm_system_prompt' => 'nullable|string',
             'use_llm' => 'sometimes|boolean',
+            'use_crawled_content' => 'sometimes|boolean',
+            'rag_enabled' => 'sometimes|boolean',
         ]);
 
         $config = ChatbotConfig::create($request->all());
         return response()->json($config, 201);
     }
 
-    /**
-     * List Q&A pairs for a chatbot.
-     */
     public function listQnAs(Request $request)
     {
-        $request->validate([
-            'chatbot_id' => 'required|exists:chatbot_configs,id',
-        ]);
-
+        $request->validate(['chatbot_id' => 'required|exists:chatbot_configs,id']);
         $qnas = ChatbotQnA::where('chatbot_id', $request->chatbot_id)
-            ->orderBy('usage_count', 'desc')
-            ->get();
-
+            ->orderBy('usage_count', 'desc')->get();
         return response()->json($qnas);
     }
 
-    /**
-     * Create a new Q&A pair.
-     */
     public function storeQnA(Request $request)
     {
         $request->validate([
@@ -77,19 +66,14 @@ class ChatbotController extends Controller
             'answer' => 'required|string',
             'category' => 'nullable|string',
         ]);
-
         $qna = ChatbotQnA::create($request->all());
         return response()->json($qna, 201);
     }
 
-    /**
-     * Get LLM configuration.
-     */
     public function getLLMConfig()
     {
         $config = $this->llmService->getConfig();
         $available = $this->llmService->isAvailable();
-
         return response()->json([
             'config' => $config,
             'available' => $available,
@@ -97,9 +81,6 @@ class ChatbotController extends Controller
         ]);
     }
 
-    /**
-     * Update LLM configuration.
-     */
     public function updateLLMConfig(Request $request)
     {
         $request->validate([
@@ -110,9 +91,7 @@ class ChatbotController extends Controller
             'max_tokens' => 'nullable|integer|min:1',
             'system_prompt' => 'nullable|string',
         ]);
-
         $this->llmService->setConfig($request->all());
-
         return response()->json([
             'message' => 'LLM configuration updated',
             'config' => $this->llmService->getConfig(),
@@ -120,7 +99,12 @@ class ChatbotController extends Controller
     }
 
     /**
-     * Chat with the bot - uses LLM if configured, falls back to Q&A matching.
+     * Chat with the bot - uses smart chain:
+     * 1. Q&A matching (instant for known questions)
+     * 2. Web crawl search (RAG - search crawled web pages)
+     * 3. Knowledge base search (articles)
+     * 4. LLM (vLLM/OpenAI) with combined context
+     * 5. Human handoff fallback
      */
     public function chat(Request $request)
     {
@@ -134,36 +118,27 @@ class ChatbotController extends Controller
         $message = $request->message;
         $sessionId = $request->session_id ?? session()->getId() ?? 'anonymous';
         $chatbotConfig = ChatbotConfig::where('is_active', true);
-
         if ($request->chatbot_id) {
             $chatbotConfig = $chatbotConfig->where('id', $request->chatbot_id);
         }
-
         $config = $chatbotConfig->first();
 
         if (!$config) {
             return response()->json([
                 'reply' => "I'm not sure I understand. Let me connect you with a human agent.",
                 'transferred' => true,
-                'source' => 'fallback',
+                'source' => 'no_config',
             ]);
         }
 
-        // Get conversation history for context
-        $history = ChatbotConversation::getHistory($sessionId, 10);
-        $history[] = ['role' => 'assistant', 'content' => 'How can I help you?'];
-
-        // Try Q&A matching first (for quick responses on known questions)
-        $messageLower = strtolower($message);
+        // Source 1: Q&A matching (fastest)
         $qna = ChatbotQnA::where('chatbot_id', $config->id)
-            ->whereRaw('LOWER(question) LIKE ?', ['%' . $messageLower . '%'])
+            ->whereRaw('LOWER(question) LIKE ?', ['%' . strtolower($message) . '%'])
             ->orderBy('usage_count', 'desc')
             ->first();
 
         if ($qna) {
             $qna->increment('usage_count');
-
-            // Log to conversation history
             ChatbotConversation::create([
                 'chatbot_id' => $config->id,
                 'conversation_id' => $request->conversation_id,
@@ -172,7 +147,6 @@ class ChatbotController extends Controller
                 'response' => $qna->answer,
                 'model' => 'qa-match',
             ]);
-
             return response()->json([
                 'reply' => $qna->answer,
                 'transferred' => false,
@@ -180,13 +154,45 @@ class ChatbotController extends Controller
             ]);
         }
 
-        // Fall back to LLM if configured and available
+        // Source 2 & 3: RAG - search crawled web pages + knowledge base
+        $context = [];
+
+        // Search crawled web content if RAG is enabled
+        if (($config->settings['rag_enabled'] ?? $config->rag_enabled ?? false) || ($config->settings['use_crawled_content'] ?? $config->use_crawled_content ?? false)) {
+            $webResults = WebCrawl::where('status', 1)
+                ->whereNotNull('content')
+                ->where(function ($q) use ($message) {
+                    $q->where('title', 'like', "%{$message}%")
+                      ->orWhere('content', 'like', "%{$message}%");
+                })
+                ->limit(5)
+                ->get(['url', 'title', 'content']);
+
+            foreach ($webResults as $web) {
+                $context[] = "[Web Page: {$web->title}]\n[URL: {$web->url}]\n{$this->extractContext($web->content, $message)}";
+            }
+        }
+
+        // Search knowledge base articles
+        $articles = Article::where('status', 'published')
+            ->where(function ($q) use ($message) {
+                $q->where('title', 'like', "%{$message}%")
+                  ->orWhere('content', 'like', "%{$message}%");
+            })
+            ->limit(3)
+            ->get(['title', 'content']);
+
+        foreach ($articles as $article) {
+            $context[] = "[Knowledge Base: {$article->title}]\n" . strip_tags($this->extractContext($article->content, $message));
+        }
+
+        // Source 4: LLM if configured and has context or is enabled
         $useLLM = $config->settings['use_llm'] ?? $config->use_llm ?? false;
         $llmAvailable = $this->llmService->isAvailable();
 
-        if ($useLLM && $llmAvailable) {
-            // Search knowledge base for relevant context
-            $context = $this->searchKnowledgeBase($message);
+        if (($useLLM || !empty($context)) && $llmAvailable) {
+            $history = ChatbotConversation::getHistory($sessionId, 10);
+            $history[] = ['role' => 'assistant', 'content' => 'How can I help you?'];
 
             $result = $this->llmService->chat(
                 message: $message,
@@ -194,7 +200,6 @@ class ChatbotController extends Controller
                 context: $context
             );
 
-            // Log to conversation history
             ChatbotConversation::create([
                 'chatbot_id' => $config->id,
                 'conversation_id' => $request->conversation_id,
@@ -212,10 +217,11 @@ class ChatbotController extends Controller
                 'transferred' => !$result['success'],
                 'source' => 'llm',
                 'model' => $result['model'] ?? null,
+                'context_sources' => count($context),
             ]);
         }
 
-        // Final fallback
+        // Source 5: Final fallback to human
         return response()->json([
             'reply' => $config->fallback_message ?? "I'm not sure I understand. Let me connect you with a human agent.",
             'transferred' => $config->human_takeover_on_fallback ?? true,
@@ -223,48 +229,28 @@ class ChatbotController extends Controller
         ]);
     }
 
-    /**
-     * Search knowledge base for relevant context.
-     */
-    protected function searchKnowledgeBase(string $query): array
-    {
-        $articles = Article::where('status', 'published')
-            ->where(function ($q) use ($query) {
-                $q->where('title', 'like', "%{$query}%")
-                  ->orWhere('content', 'like', "%{$query}%");
-            })
-            ->limit(5)
-            ->get(['title', 'content']);
-
-        return $articles->map(fn($article) =>
-            "Title: {$article->title}\nContent: " . strip_tags($article->content)
-        )->toArray();
-    }
-
-    /**
-     * Get chatbot analytics.
-     */
     public function analytics(Request $request)
     {
-        $request->validate([
-            'chatbot_id' => 'required|exists:chatbot_configs,id',
-        ]);
-
-        $totalConversations = ChatbotConversation::where('chatbot_id', $request->chatbot_id)->count();
-        $qaResponses = ChatbotConversation::where('chatbot_id', $request->chatbot_id)
-            ->where('model', 'qa-match')
-            ->count();
-        $llmResponses = ChatbotConversation::where('chatbot_id', $request->chatbot_id)
-            ->whereNotNull('model')
-            ->where('model', '!=', 'qa-match')
-            ->count();
+        $request->validate(['chatbot_id' => 'required|exists:chatbot_configs,id']);
+        $total = ChatbotConversation::where('chatbot_id', $request->chatbot_id)->count();
+        $qa = ChatbotConversation::where('chatbot_id', $request->chatbot_id)->where('model', 'qa-match')->count();
+        $llm = ChatbotConversation::where('chatbot_id', $request->chatbot_id)->whereNotNull('model')->where('model', '!=', 'qa-match')->count();
 
         return response()->json([
-            'total_conversations' => $totalConversations,
-            'qa_responses' => $qaResponses,
-            'llm_responses' => $llmResponses,
-            'qa_percentage' => $totalConversations > 0 ? round(($qaResponses / $totalConversations) * 100, 2) : 0,
-            'llm_percentage' => $totalConversations > 0 ? round(($llmResponses / $totalConversations) * 100, 2) : 0,
+            'total_conversations' => $total,
+            'qa_responses' => $qa,
+            'llm_responses' => $llm,
+            'qa_percentage' => $total > 0 ? round(($qa / $total) * 100, 2) : 0,
+            'llm_percentage' => $total > 0 ? round(($llm / $total) * 100, 2) : 0,
         ]);
+    }
+
+    protected function extractContext(string $content, string $query, int $window = 200): string
+    {
+        $pos = stripos($content, $query);
+        if ($pos === false) return mb_substr($content, 0, $window);
+        $start = max(0, $pos - $window);
+        $end = min(mb_strlen($content), $pos + mb_strlen($query) + $window);
+        return mb_substr($content, $start, $end - $start);
     }
 }

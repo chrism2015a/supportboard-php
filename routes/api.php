@@ -13,6 +13,7 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\CrawlSourceController;
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -92,3 +93,14 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/users/{id}', [UserController::class, 'update']);
     Route::put('/users/{id}/password', [UserController::class, 'updatePassword']);
 });
+
+// Crawl Sources
+Route::get('/crawl-sources', [CrawlSourceController::class, 'index']);
+Route::post('/crawl-sources', [CrawlSourceController::class, 'store']);
+Route::put('/crawl-sources/{id}', [CrawlSourceController::class, 'update']);
+Route::delete('/crawl-sources/{id}', [CrawlSourceController::class, 'destroy']);
+Route::post('/crawl-sources/crawl-url', [CrawlSourceController::class, 'crawlUrl']);
+Route::post('/crawl-sources/crawl-all', [CrawlSourceController::class, 'crawlSources']);
+Route::get('/crawl-sources/{id}/history', [CrawlSourceController::class, 'history']);
+Route::get('/crawl-sources/stats', [CrawlSourceController::class, 'stats']);
+Route::post('/crawl-sources/search', [CrawlSourceController::class, 'search']);
