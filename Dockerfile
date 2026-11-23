@@ -47,8 +47,9 @@ RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
 # --no-security-blocking bypasses security advisory blocking for Laravel 10
 RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress --no-security-blocking
 
-# Expose port
+# Mount custom pool config (overridden at runtime via volume)
+# This makes FPM run as root to fix volume mount permission issues
 EXPOSE 9000
 
-# Start PHP-FPM
-CMD ["php-fpm"]
+# Start PHP-FPM with custom pool override
+CMD ["php-fpm", "--allow-to-run-as-root"]
