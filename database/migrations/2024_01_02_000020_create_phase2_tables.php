@@ -71,7 +71,7 @@ return new class extends Migration
         // Add file_path to messages table (for rich messages)
         if (!Schema::hasColumn('messages', 'file_path')) {
             Schema::table('messages', function (Blueprint $table) {
-                $table->string('file_path')->nullable()->after('text');
+                $table->string('file_path')->nullable()->after('content');
             });
         }
 
