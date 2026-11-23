@@ -45,7 +45,11 @@ RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
 
 # Install PHP dependencies (optimized for production)
 # --no-security-blocking bypasses security advisory blocking for Laravel 10
-RUN composer install --optimize-autoloader --no-dev --no-interaction --no-progress --no-security-blocking
+# Retry up to 3 times with 5 second delays to handle GitHub API timeouts
+RUN for i in 1 2 3; do \
+    composer install --optimize-autoloader --no-dev --no-interaction --no-progress --no-security-blocking && break || \
+    (echo "Attempt $i failed, retrying in 5 seconds..." && sleep 5); \
+done
 
 # Mount custom pool config (overridden at runtime via volume)
 # This makes FPM run as root to fix volume mount permission issues
