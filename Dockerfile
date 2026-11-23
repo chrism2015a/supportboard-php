@@ -38,12 +38,10 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Create all runtime directories before chown (these are gitignored runtime dirs)
+# Create all runtime directories (these are gitignored runtime dirs)
 RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
     && mkdir -p storage/logs \
-    && mkdir -p bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap \
-    && chmod -R 755 storage bootstrap
+    && mkdir -p bootstrap/cache
 
 # Install PHP dependencies (optimized for production)
 # --no-security-blocking bypasses security advisory blocking for Laravel 10
