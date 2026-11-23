@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('chatbot_conversations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('chatbot_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('conversation_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('chatbot_id')->nullable()->constrained('chatbot_configs')->nullOnDelete();
+            $table->foreignId('conversation_id')->nullable()->constrained('conversations')->nullOnDelete();
             $table->string('session_id')->nullable();
             $table->text('prompt');
             $table->text('response');

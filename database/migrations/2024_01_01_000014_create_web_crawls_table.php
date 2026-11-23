@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('web_crawls', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('chatbot_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('chatbot_id')->nullable()->constrained('chatbot_configs')->nullOnDelete();
             $table->string('url')->unique();
             $table->string('title')->nullable();
             $table->text('content')->nullable();
@@ -33,7 +33,7 @@ return new class extends Migration
 
         Schema::create('crawl_sources', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('chatbot_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('chatbot_id')->nullable()->constrained('chatbot_configs')->nullOnDelete();
             $table->string('name');
             $table->string('base_url');
             $table->json('allowed_paths')->nullable();

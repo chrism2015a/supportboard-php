@@ -27,7 +27,7 @@ return new class extends Migration
 
         Schema::create('chatbot_qnas', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('chatbot_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('chatbot_id')->constrained('chatbot_configs')->cascadeOnDelete();
             $table->string('question');
             $table->text('answer');
             $table->string('category')->nullable();
@@ -37,7 +37,7 @@ return new class extends Migration
 
         Schema::create('chatbot_flows', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('chatbot_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('chatbot_id')->constrained('chatbot_configs')->cascadeOnDelete();
             $table->string('name');
             $table->text('description')->nullable();
             $table->json('steps');
@@ -47,7 +47,7 @@ return new class extends Migration
 
         Schema::create('chatbot_analytics', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('chatbot_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('chatbot_id')->constrained('chatbot_configs')->cascadeOnDelete();
             $table->date('date');
             $table->integer('total_conversations')->default(0);
             $table->integer('resolved_by_bot')->default(0);
