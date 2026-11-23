@@ -11,6 +11,7 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
     environment:
+      - APP_NAME=SupportBoard
       - APP_ENV=production
       - APP_DEBUG=false
       - DB_CONNECTION=mysql
@@ -19,7 +20,8 @@ services:
       - DB_DATABASE=supportboard
       - DB_USERNAME=supportboard
       - DB_PASSWORD=secret_password
-      - JWT_SECRET=${JWT_SECRET:-}
+      - APP_KEY=base64:3zVVw0juUcsS5465a4FzFx7a8K1sXzn1xov6eXmnqOA=
+      - JWT_SECRET=uctPOSmXRNraMH4IRcoWxFd+qIPTKbFQ0hVHsoUJk+E=
       - LLM_ENDPOINT=${LLM_ENDPOINT:-}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
@@ -80,6 +82,7 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
     environment:
+      - APP_NAME=SupportBoard
       - APP_ENV=production
       - APP_DEBUG=false
       - DB_CONNECTION=mysql
@@ -88,7 +91,8 @@ services:
       - DB_DATABASE=supportboard
       - DB_USERNAME=supportboard
       - DB_PASSWORD=secret_password
-      - JWT_SECRET=${JWT_SECRET:-}
+      - APP_KEY=base64:3zVVw0juUcsS5465a4FzFx7a8K1sXzn1xov6eXmnqOA=
+      - JWT_SECRET=uctPOSmXRNraMH4IRcoWxFd+qIPTKbFQ0hVHsoUJk+E=
       - LLM_ENDPOINT=${LLM_ENDPOINT:-}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
