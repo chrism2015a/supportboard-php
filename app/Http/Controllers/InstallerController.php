@@ -46,7 +46,7 @@ class InstallerController extends Controller
         // Check Laravel
         $laravelVersion = null;
         try {
-            $laravelVersion = Artisan::version();
+            $laravelVersion = \Illuminate\Foundation\Application::VERSION;
         } catch (\Exception $e) {
             $laravelVersion = null;
         }
