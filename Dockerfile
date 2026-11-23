@@ -43,6 +43,10 @@ RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache
 
+# Create a startup script that ensures runtime directories exist even if volume mount overwrites them
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
 # Install PHP dependencies (optimized for production)
 # --no-security-blocking bypasses security advisory blocking for Laravel 10
 # Retry up to 3 times with 5 second delays to handle GitHub API timeouts
@@ -55,5 +59,5 @@ done
 # This makes FPM run as root to fix volume mount permission issues
 EXPOSE 9000
 
-# Start PHP-FPM with custom pool override
-CMD ["php-fpm", "--allow-to-run-as-root"]
+# Override CMD to run startup script first (creates storage dirs, then starts FPM)
+CMD ["/docker-entrypoint.sh"]
