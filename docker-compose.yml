@@ -11,7 +11,7 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
       - ./etc/pool-custom.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
-    command: php-fpm --allow-to-run-as-root
+    command: /docker-entrypoint.sh php-fpm --allow-to-run-as-root
     environment:
       - APP_NAME=SupportBoard
       - APP_ENV=production
