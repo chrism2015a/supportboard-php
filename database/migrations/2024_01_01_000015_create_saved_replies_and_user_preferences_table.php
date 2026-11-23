@@ -26,17 +26,12 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('theme')->default('light')->after('email');
         });
-
-        // Add language column to users
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('language')->default('en')->after('theme');
-        });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['theme', 'language']);
+            $table->dropColumn('theme');
         });
 
         Schema::dropIfExists('saved_replies');
