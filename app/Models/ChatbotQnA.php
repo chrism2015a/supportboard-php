@@ -9,6 +9,8 @@ class ChatbotQnA extends Model
 {
     use HasFactory;
 
+    protected $table = 'chatbot_qnas';
+
     protected $fillable = [
         'chatbot_id',
         'question',
